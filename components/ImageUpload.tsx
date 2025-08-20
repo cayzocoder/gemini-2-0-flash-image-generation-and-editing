@@ -4,6 +4,7 @@ import { useCallback, useState, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "./ui/button";
 import { Upload as UploadIcon, Image as ImageIcon, X } from "lucide-react";
+import Image from "next/image"; // ✅ next/image qo‘shildi
 
 interface ImageUploadProps {
   onImageSelect: (imageData: string) => void;
@@ -35,6 +36,7 @@ export function ImageUpload({ onImageSelect, currentImage, onError }: ImageUploa
   const onDrop = useCallback(
     (acceptedFiles: File[], fileRejections) => {
       if (fileRejections?.length > 0) {
+        // ❌ avvalgi versiyada "const error = ..." ortiqcha edi
         onError?.(fileRejections[0].errors[0].message);
         return;
       }
@@ -60,7 +62,7 @@ export function ImageUpload({ onImageSelect, currentImage, onError }: ImageUploa
       };
       reader.readAsDataURL(file);
     },
-    [onImageSelect, onError] // ✅ onError ham qo‘shildi
+    [onImageSelect, onError] // ✅ dependency array to‘g‘rilandi
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -129,15 +131,21 @@ export function ImageUpload({ onImageSelect, currentImage, onError }: ImageUploa
             </Button>
           </div>
           <div className="w-full overflow-hidden rounded-md">
-            <img
-              src={currentImage}
-              alt="Selected"
-              className="w-full h-auto object-contain"
-            />
+            {/* ✅ <img> o‘rniga Next.js <Image /> ishlatilmoqda */}
+            {currentImage && (
+              <Image
+                src={currentImage}
+                alt="Selected"
+                width={800}
+                height={600}
+                className="w-full h-auto object-contain"
+              />
+            )}
           </div>
         </div>
       )}
     </div>
   );
 }
+
 
