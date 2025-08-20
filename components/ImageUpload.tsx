@@ -1,151 +1,79 @@
 "use client";
 
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { Button } from "./ui/button";
-import { Upload as UploadIcon, Image as ImageIcon, X } from "lucide-react";
-import Image from "next/image"; // ✅ next/image qo‘shildi
+import Image from "next/image";
 
 interface ImageUploadProps {
-  onImageSelect: (imageData: string) => void;
-  currentImage: string | null;
-  onError?: (error: string) => void;
+  onImageSelect: (file: File) => void;
+  onError?: (message: string) => void;
 }
 
-export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 Bytes";
-  const k = 1024;
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return (
-    Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
-  );
-}
-
-export function ImageUpload({ onImageSelect, currentImage, onError }: ImageUploadProps) {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+export default function ImageUpload({ onImageSelect, onError }: ImageUploadProps) {
+  const [preview, setPreview] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  // Update the selected file when the current image changes
-  useEffect(() => {
-    if (!currentImage) {
-      setSelectedFile(null);
-    }
-  }, [currentImage]);
 
   const onDrop = useCallback(
     (acceptedFiles: File[], fileRejections) => {
       if (fileRejections?.length > 0) {
-        // ❌ avvalgi versiyada "const error = ..." ortiqcha edi
-        onError?.(fileRejections[0].errors[0].message);
+        const error = fileRejections[0].errors[0];
+        onError?.(error.message);
         return;
       }
 
       const file = acceptedFiles[0];
-      if (!file) return;
+      if (file) {
+        setIsLoading(true);
 
-      setSelectedFile(file);
-      setIsLoading(true);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPreview(reader.result as string);
+          setIsLoading(false);
+        };
+        reader.onerror = () => {
+          onError?.("Error reading file. Please try again.");
+          setIsLoading(false);
+        };
+        reader.readAsDataURL(file);
 
-      // Convert the file to base64
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target && event.target.result) {
-          const result = event.target.result as string;
-          onImageSelect(result);
-        }
-        setIsLoading(false);
-      };
-      reader.onerror = () => {
-        onError?.("Error reading file. Please try again.");
-        setIsLoading(false);
-      };
-      reader.readAsDataURL(file);
+        onImageSelect(file);
+      }
     },
-    [onImageSelect, onError] // ✅ dependency array to‘g‘rilandi
+    [onImageSelect, onError] // ✅ dependency to‘liq
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: {
-      "image/png": [".png"],
-      "image/jpeg": [".jpg", ".jpeg"]
-    },
-    maxSize: 10 * 1024 * 1024, // 10MB
-    multiple: false
+    accept: { "image/*": [] },
+    multiple: false,
+    maxSize: 5 * 1024 * 1024, // 5MB
   });
 
-  const handleRemove = () => {
-    setSelectedFile(null);
-    onImageSelect("");
-  };
-
   return (
-    <div className="w-full">
-      {!currentImage ? (
-        <div
-          {...getRootProps()}
-          className={`min-h-[150px] p-4 rounded-lg
-          ${isDragActive ? "bg-secondary/50" : "bg-secondary"}
-          ${isLoading ? "opacity-50 cursor-wait" : ""}
-          transition-colors duration-200 ease-in-out hover:bg-secondary/50
-          border-2 border-dashed border-secondary
-          cursor-pointer flex items-center justify-center gap-4
-        `}
-        >
-          <input {...getInputProps()} />
-          <div className="flex flex-row items-center" role="presentation">
-            <UploadIcon className="w-8 h-8 text-primary mr-3 flex-shrink-0" aria-hidden="true" />
-            <div>
-              <p className="text-sm font-medium text-foreground">
-                Drop your image here or click to browse
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Maximum file size: 10MB
-              </p>
-            </div>
-          </div>
-        </div>
+    <div
+      {...getRootProps()}
+      className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition
+        ${isDragActive ? "border-blue-500 bg-blue-50" : "border-gray-300 bg-white"}
+      `}
+    >
+      <input {...getInputProps()} />
+      {isLoading ? (
+        <p className="text-gray-500">Loading preview...</p>
+      ) : preview ? (
+        <Image
+          src={preview}
+          alt="Uploaded preview"
+          width={300}
+          height={300}
+          unoptimized
+          className="mx-auto rounded-lg shadow-md"
+        />
       ) : (
-        <div className="flex flex-col items-center p-4 rounded-lg bg-secondary">
-          <div className="flex w-full items-center mb-4">
-            <ImageIcon className="w-8 h-8 text-primary mr-3 flex-shrink-0" aria-hidden="true" />
-            <div className="flex-grow min-w-0">
-              <p className="text-sm font-medium truncate text-foreground">
-                {selectedFile?.name || "Current Image"}
-              </p>
-              {selectedFile && (
-                <p className="text-xs text-muted-foreground">
-                  {formatFileSize(selectedFile?.size ?? 0)}
-                </p>
-              )}
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleRemove}
-              className="flex-shrink-0 ml-2"
-            >
-              <X className="w-4 h-4" />
-              <span className="sr-only">Remove image</span>
-            </Button>
-          </div>
-          <div className="w-full overflow-hidden rounded-md">
-            {/* ✅ <img> o‘rniga Next.js <Image /> ishlatilmoqda */}
-            {currentImage && (
-              <Image
-                src={currentImage}
-                alt="Selected"
-                width={800}
-                height={600}
-                className="w-full h-auto object-contain"
-              />
-            )}
-          </div>
-        </div>
+        <p className="text-gray-500">
+          Drag & drop an image here, or click to select
+        </p>
       )}
     </div>
   );
 }
-
 
