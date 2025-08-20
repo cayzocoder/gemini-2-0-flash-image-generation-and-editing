@@ -35,8 +35,7 @@ export function ImageUpload({ onImageSelect, currentImage, onError }: ImageUploa
   const onDrop = useCallback(
     (acceptedFiles: File[], fileRejections) => {
       if (fileRejections?.length > 0) {
-        const error = fileRejections[0].errors[0];
-        onError?.(error.message);
+        onError?.(fileRejections[0].errors[0].message);
         return;
       }
 
@@ -55,13 +54,13 @@ export function ImageUpload({ onImageSelect, currentImage, onError }: ImageUploa
         }
         setIsLoading(false);
       };
-      reader.onerror = (error) => {
+      reader.onerror = () => {
         onError?.("Error reading file. Please try again.");
         setIsLoading(false);
       };
       reader.readAsDataURL(file);
     },
-    [onImageSelect]
+    [onImageSelect, onError] // ✅ onError ham qo‘shildi
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -95,7 +94,7 @@ export function ImageUpload({ onImageSelect, currentImage, onError }: ImageUploa
           <input {...getInputProps()} />
           <div className="flex flex-row items-center" role="presentation">
             <UploadIcon className="w-8 h-8 text-primary mr-3 flex-shrink-0" aria-hidden="true" />
-            <div className="">
+            <div>
               <p className="text-sm font-medium text-foreground">
                 Drop your image here or click to browse
               </p>
@@ -141,3 +140,4 @@ export function ImageUpload({ onImageSelect, currentImage, onError }: ImageUploa
     </div>
   );
 }
+
