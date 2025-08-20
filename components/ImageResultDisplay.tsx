@@ -43,4 +43,3 @@ export default function ImageResultDisplay({ images }: ImageResultDisplayProps) 
     </div>
   );
 }
-
